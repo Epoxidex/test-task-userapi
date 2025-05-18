@@ -78,24 +78,26 @@ namespace UserAPI.Controllers
             }
 
             bool isAdmin = _authService.IsAdmin(currentUser);
+            bool isSameUser = currentUser.Login.Equals(updatePasswordDto.Login, StringComparison.OrdinalIgnoreCase);
 
-            if (isAdmin || currentUser.Login.Equals(updatePasswordDto.Login, StringComparison.OrdinalIgnoreCase))
+            if (!isAdmin && !isSameUser)
             {
-                var result = await _userService.UpdatePasswordAsync(
-                    updatePasswordDto.Login,
-                    updatePasswordDto.OldPassword,
-                    updatePasswordDto.NewPassword,
-                    currentUser.Login);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result.ErrorMessage);
-                }
-
-                return Ok(result.Data);
+                return Forbid("У вас нет прав для изменения пароля этого пользователя");
             }
 
-            return Forbid("У вас нет прав для изменения пароля этого пользователя");
+            var result = await _userService.UpdatePasswordAsync(
+                updatePasswordDto.Login,
+                updatePasswordDto.OldPassword,
+                updatePasswordDto.NewPassword,
+                currentUser.Login,
+                isAdmin);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.ErrorMessage);
+            }
+
+            return Ok(result.Data);
         }
 
         // Изменение логина
@@ -108,7 +110,10 @@ namespace UserAPI.Controllers
                 return Unauthorized("Необходима авторизация");
             }
 
-            if (!_authService.CanModifyUser(currentUser, updateLoginDto.OldLogin))
+            bool isAdmin = _authService.IsAdmin(currentUser);
+            bool isSameUser = currentUser.Login.Equals(updateLoginDto.OldLogin, StringComparison.OrdinalIgnoreCase);
+
+            if (!isAdmin && !isSameUser)
             {
                 return Forbid("У вас нет прав для изменения логина этого пользователя");
             }
@@ -117,7 +122,8 @@ namespace UserAPI.Controllers
                 updateLoginDto.OldLogin,
                 updateLoginDto.NewLogin,
                 updateLoginDto.Password,
-                currentUser.Login);
+                currentUser.Login,
+                isAdmin);
 
             if (!result.IsSuccess)
             {

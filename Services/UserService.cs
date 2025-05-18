@@ -69,16 +69,32 @@ namespace UserAPI.Services
             return ServiceResult<UserFullInfoDto>.Success(MapToUserFullInfoDto(updatedUser));
         }
 
-        public async Task<ServiceResult<UserFullInfoDto>> UpdatePasswordAsync(string login, string oldPassword, string newPassword, string modifiedBy)
+        public async Task<ServiceResult<UserFullInfoDto>> UpdatePasswordAsync(
+            string login,
+            string oldPassword,
+            string newPassword,
+            string modifiedBy,
+            bool isAdmin = false)
         {
-            var user = await _userRepository.GetUserByLoginAndPasswordAsync(login, oldPassword);
+            User? user;
 
-            if (user == null)
+            if (isAdmin)
             {
-                return ServiceResult<UserFullInfoDto>.Failure("Неверный логин или пароль");
+                user = await _userRepository.GetByLoginAsync(login);
+                if (user == null)
+                {
+                    return ServiceResult<UserFullInfoDto>.Failure("Пользователь не найден");
+                }
+            }
+            else
+            {
+                user = await _userRepository.GetUserByLoginAndPasswordAsync(login, oldPassword);
+                if (user == null)
+                {
+                    return ServiceResult<UserFullInfoDto>.Failure("Неверный логин или пароль");
+                }
             }
 
-            // GetUserByLoginAndPasswordAsync вернет null если пользователь revoked
             if (user.RevokedOn != null)
             {
                 return ServiceResult<UserFullInfoDto>.Failure("Невозможно изменить пароль удаленного пользователя");
@@ -97,12 +113,30 @@ namespace UserAPI.Services
             return ServiceResult<UserFullInfoDto>.Success(MapToUserFullInfoDto(updatedUser));
         }
 
-        public async Task<ServiceResult<UserFullInfoDto>> UpdateLoginAsync(string oldLogin, string newLogin, string password, string modifiedBy)
+        public async Task<ServiceResult<UserFullInfoDto>> UpdateLoginAsync(
+            string oldLogin,
+            string newLogin,
+            string password,
+            string modifiedBy,
+            bool isAdmin = false)
         {
-            var user = await _userRepository.GetUserByLoginAndPasswordAsync(oldLogin, password);
-            if (user == null)
+            User? user;
+
+            if (isAdmin)
             {
-                return ServiceResult<UserFullInfoDto>.Failure("Неверный логин или пароль");
+                user = await _userRepository.GetByLoginAsync(oldLogin);
+                if (user == null)
+                {
+                    return ServiceResult<UserFullInfoDto>.Failure("Пользователь не найден");
+                }
+            }
+            else
+            {
+                user = await _userRepository.GetUserByLoginAndPasswordAsync(oldLogin, password);
+                if (user == null)
+                {
+                    return ServiceResult<UserFullInfoDto>.Failure("Неверный логин или пароль");
+                }
             }
 
             if (user.RevokedOn != null)
